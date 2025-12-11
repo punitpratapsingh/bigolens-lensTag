@@ -7,7 +7,7 @@ __pycache__/
 # Virtual environments
 siglip-env/
 venv/
-.venv/
+
 
 
 .DS_Store
