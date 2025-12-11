@@ -29,15 +29,15 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build -t bigolens-lensTag:latest .
+          docker build -t bigolens-lenstag:latest .
 
       - name: Tag image for ECR
         run: |
-          docker tag bigolens-lensTag:latest ${{ steps.login-ecr.outputs.registry }}/bigolens-lensTag:latest
+          docker tag bigolens-lenstag:latest ${{ steps.login-ecr.outputs.registry }}/bigolens-lenstag:latest
 
       - name: Push image to ECR
         run: |
-          docker push ${{ steps.login-ecr.outputs.registry }}/bigolens-lensTag:latest
+          docker push ${{ steps.login-ecr.outputs.registry }}/bigolens-lenstag:latest
 
       - name: Deploy to App Runner
         run: |
