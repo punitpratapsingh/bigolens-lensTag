@@ -9,8 +9,6 @@ siglip-env/
 venv/
 .venv/
 
-models/
-
 
 .DS_Store
 .env
