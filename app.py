@@ -11,6 +11,13 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 app = FastAPI(title="LensTag API", version="1.0")
 
+# ---------------------------
+# HEALTH CHECK API
+# ---------------------------
+@app.get("/health")
+async def health_check():
+    return {"status": "ok", "service": "LensTag API", "version": "1.0"}
+
 
 def image_to_base64(image_file):
     return base64.b64encode(image_file).decode("utf-8")
