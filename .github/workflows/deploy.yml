@@ -29,15 +29,15 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build -t lenstag:latest .
+          docker build -t lens-tag:latest .
 
       - name: Tag image for ECR
         run: |
-          docker tag lenstag:latest ${{ steps.login-ecr.outputs.registry }}/lenstag:latest
+          docker tag lens-tag:latest ${{ steps.login-ecr.outputs.registry }}/lens-tag:latest
 
       - name: Push image to ECR
         run: |
-          docker push ${{ steps.login-ecr.outputs.registry }}/lenstag:latest
+          docker push ${{ steps.login-ecr.outputs.registry }}/lens-tag:latest
 
       - name: Deploy to App Runner
         run: |
