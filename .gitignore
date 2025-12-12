@@ -4,7 +4,7 @@ __pycache__/
 *.pyo
 *.pyd
 
-# Virtual environments
+# Virtual environment
 siglip-env/
 
 
