@@ -1,84 +1,109 @@
-import base64
-from fastapi import FastAPI, UploadFile, File
-from fastapi.responses import JSONResponse
-from openai import OpenAI
 import os
+import re
+import json
+import base64
+import google.generativeai as genai
+from fastapi import FastAPI, UploadFile, File, HTTPException
 from dotenv import load_dotenv
+from fastapi.responses import JSONResponse
 
+# Load .env for local development
 load_dotenv()
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# Load Gemini API key from environment
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+if not GEMINI_API_KEY:
+    raise ValueError("❌ GEMINI_API_KEY is not set in environment variables!")
 
-app = FastAPI(title="LensTag API", version="1.0")
+# Configure Gemini
+genai.configure(api_key=GEMINI_API_KEY)
 
-# ---------------------------
-# HEALTH CHECK API
-# ---------------------------
-@app.get("/health")
-async def health_check():
-    return {"status": "ok", "service": "LensTag API", "version": "1.0"}
+# Initialize model
+model = genai.GenerativeModel("gemini-2.5-flash")
 
+app = FastAPI(title="LensTag - Auto Tagging API")
 
-def image_to_base64(image_file):
-    return base64.b64encode(image_file).decode("utf-8")
-
-
-def build_prompt():
-    return """
+# ------------------------------------------------------
+# NEW STRICT JSON PROMPT
+# ------------------------------------------------------
+PROMPT = """
 You are LensTag, an advanced AI that extracts eCommerce tags & attributes.
 
-Return JSON only in the EXACT format below:
+Output MUST follow exactly this JSON structure:
 
 {
-  "tags": ["tag1", "tag2", "..."],
-  "category": "main_category",
+  "category": "",
+  "sub_category": "",
   "attributes": {
     "color": "",
-    "pattern": "",
     "material": "",
-    "sleeve": "",
-    "neck": "",
-    "fit": "",
+    "pattern": "",
     "style": "",
-    "occasion": ""
-  }
+    "gender": "",
+    "occasion": "",
+    "segment": "",
+    "metal_type": "",
+    "closing_type": "",
+    "shape": "",
+    "craft": ""
+  },
+  "auto_tags": [],
+  "seo_description": ""
 }
 
-Rules:
-- Do NOT include explanations.
-- Category must be a single high-level fashion category (e.g., tshirt, shirt, saree, kurta, jeans, footwear, handbag, dress, top, jacket, shorts).
-- Keep tags short (5–15).
-- If unsure of an attribute, return empty string.
+RULES:
+- Return ONLY pure JSON.
+- Never use ```json or ``` or markdown.
+- Never include explanations.
+- auto_tags must contain 10–15 lowercase tags.
+- Never return null — use empty strings instead.
+- If unsure, make the best guess.
+
+Now analyze the image and respond with clean JSON only:
 """
-    
 
+
+# ------------------------------------------------------
+# LensTag Endpoint
+# ------------------------------------------------------
 @app.post("/lensTag")
-async def get_tags_and_attributes(file: UploadFile = File(...)):
-    try:
-        img_bytes = await file.read()
-        b64_img = image_to_base64(img_bytes)
+async def lens_tag(image: UploadFile = File(...)):
+    # Read image
+    image_bytes = await image.read()
+    img_b64 = base64.b64encode(image_bytes).decode()
 
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",   # ultra fast + cheap + reliable
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": build_prompt()},
-                        {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": f"data:image/jpeg;base64,{b64_img}"
-                            }
-                        }
-                    ]
-                }
-            ]
+    # Get response from Gemini
+    gemini_output = model.generate_content(
+        [
+            PROMPT,
+            {"mime_type": image.content_type, "data": img_b64}
+        ]
+    )
+
+    raw_text = gemini_output.text
+
+    # Remove markdown fences if present
+    clean_text = re.sub(r"```json|```", "", raw_text).strip()
+
+    # Try to parse JSON
+    try:
+        parsed_json = json.loads(clean_text)
+        return JSONResponse(content=parsed_json, status_code=200)
+
+    except Exception:
+        # Parsing failed → return debugging info
+        return JSONResponse(
+            status_code=200,
+            content={
+                "error": "JSON parsing failed. Check model output.",
+                "raw_output": raw_text
+            }
         )
 
-        output = response.choices[0].message["content"]
 
-        return JSONResponse(content={"result": output})
-
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+# ------------------------------------------------------
+# Health Endpoint
+# ------------------------------------------------------
+@app.get("/health")
+def health():
+    return {"status": "OK 🚀", "service": "LensTag Gemini Flash 2.5"}
