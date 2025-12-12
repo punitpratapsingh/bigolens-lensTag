@@ -106,4 +106,4 @@ async def lens_tag(image: UploadFile = File(...)):
 # ------------------------------------------------------
 @app.get("/health")
 def health():
-    return {"status": "OK 🚀", "service": "LensTag Gemini Flash 2.5"}
+    return {"status": "OK 🚀", "service": "LensTag model Gemini Flash 2.5"}
